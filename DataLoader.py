@@ -23,8 +23,10 @@ class DataLoaderH5(object):
         assert self.im_set.shape[2]==self.load_size, 'Image size error!'
         print('# Images found:', self.num)
 
+        print("Shuffling...")
         self.shuffle()
         self._idx = 0
+        print("DataLoader ready.")
         
     def next_batch(self, batch_size):
         labels_batch = np.zeros(batch_size)
