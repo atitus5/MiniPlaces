@@ -3,3 +3,5 @@ objects/*
 *.pem
 miniplaces/*
 *.h5
+*.pyc
+*.swp
