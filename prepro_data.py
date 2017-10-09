@@ -23,9 +23,9 @@ def createH5(params):
 	print('# Images found:', N)
 	
 	# permutation
-	perm = np.random.permutation(N) 
-	list_im = list_im[perm]
-	list_lab = list_lab[perm]
+	#perm = np.random.permutation(N) 
+	#list_im = list_im[perm]
+	#list_lab = list_lab[perm]
 
 	im_set = f_h5.create_dataset("images", (N,params['img_resize'],params['img_resize'],3), dtype='uint8') # space for resized images
 	f_h5.create_dataset("labels", dtype='uint8', data=list_lab)
@@ -58,6 +58,14 @@ if __name__=='__main__':
 		'data_root': 'images/',	# MODIFY PATH ACCORDINGLY
     		'data_list': 'development_kit/data/val.txt'
 	}
+	params_test = {
+		'name': 'miniplaces',
+		'split': 'test',
+		'img_resize': 128,
+		'data_root': 'images/',	# MODIFY PATH ACCORDINGLY
+    		'data_list': 'development_kit/data/test.txt'
+	}
 
-	createH5(params_train)
+	#createH5(params_train)
 	createH5(params_val)
+	createH5(params_test)

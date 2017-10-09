@@ -16,11 +16,11 @@ data_mean = np.asarray([0.45834960097,0.44674252445,0.41352266842])
 # Training Parameters
 learning_rate = 0.001
 dropout = 0.5 # Dropout, probability to keep units
-training_iters = 15000
+training_iters = 10000
 step_display = 50
-step_save = 100
-path_save = './saved_models/alexnet_bn'
-start_from = '11000'
+step_save = 200
+path_save = './saved_models_efc/alexnet_bn'
+start_from = '5000'
 
 test_only = False
 
@@ -42,6 +42,7 @@ def alexnet(x, keep_dropout, train_phase):
 
         'wf6': tf.Variable(tf.random_normal([8*8*64, 4096], stddev=np.sqrt(2./(8*8*64)))),
         'wf7': tf.Variable(tf.random_normal([4096, 4096], stddev=np.sqrt(2./4096))),
+        'wf8': tf.Variable(tf.random_normal([4096, 4096], stddev=np.sqrt(2./4096))),
         'wo': tf.Variable(tf.random_normal([4096, 100], stddev=np.sqrt(2./4096)))
     }
 
@@ -90,8 +91,14 @@ def alexnet(x, keep_dropout, train_phase):
     fc7 = tf.nn.relu(fc7)
     fc7 = tf.nn.dropout(fc7, keep_dropout)
 
+    # FC + ReLU + Dropout
+    fc8 = tf.matmul(fc7, weights['wf8'])
+    fc8 = batch_norm_layer(fc8, train_phase, 'bn8')
+    fc8 = tf.nn.relu(fc8)
+    fc8 = tf.nn.dropout(fc8, keep_dropout)
+
     # Output FC
-    out = tf.add(tf.matmul(fc7, weights['wo']), biases['bo'])
+    out = tf.add(tf.matmul(fc8, weights['wo']), biases['bo'])
     
     return out
 
@@ -168,12 +175,13 @@ with tf.Session() as sess:
     # Initialization
     if len(start_from)>1:
         saver.restore(sess, path_save+"-"+start_from)
+        step = int(start_from)
     else:
         sess.run(init)
+        step = 0
 
     
-    
-    step = int(start_from)
+
     if not test_only:
 	    while step < training_iters:
 	        # Load a batch of training data

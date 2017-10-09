@@ -24,7 +24,8 @@ class DataLoaderH5(object):
         print('# Images found:', self.num)
 
         print("Shuffling...")
-        self.shuffle()
+        if self.randomize:
+            self.shuffle()
         self._idx = 0
         print("DataLoader ready.")
         
