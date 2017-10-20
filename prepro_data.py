@@ -68,4 +68,4 @@ if __name__=='__main__':
 
 	createH5(params_train)
 	createH5(params_val)
-	#createH5(params_test)
+	createH5(params_test)
