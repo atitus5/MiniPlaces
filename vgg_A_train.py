@@ -16,15 +16,15 @@ data_mean = np.asarray([0.45834960097,0.44674252445,0.41352266842])
 # Training Parameters
 learning_rate = 0.001
 dropout = 0.5 # Dropout, probability to keep units
-training_iters = 25000
-step_display = 50
-step_save = 200
-path_save = './saved_models_efc/vgg_A'
+training_iters = 10000
+step_display = 25
+step_save = 100
+path_save = './saved_models/vgg_A'
 start_from = ''
 
 test_only = False
 
-def vgg_A(x, keep_dropout, train_phase):
+def vgg_A(x, keep_dropout):
     weights = {
         'wc1': tf.Variable(tf.random_normal([3, 3, 3, 64], stddev=np.sqrt(2./(3*3*3)))),
         'wc2': tf.Variable(tf.random_normal([3, 3, 64, 128], stddev=np.sqrt(2./(3*3*64)))),
@@ -35,7 +35,7 @@ def vgg_A(x, keep_dropout, train_phase):
         'wc7': tf.Variable(tf.random_normal([3, 3, 512, 512], stddev=np.sqrt(2./(3*3*512)))),
         'wc8': tf.Variable(tf.random_normal([3, 3, 512, 512], stddev=np.sqrt(2./(3*3*512)))),
 
-        'wf9': tf.Variable(tf.random_normal([3*3*512, 4096], stddev=np.sqrt(2./(3*3*512)))),
+        'wf9': tf.Variable(tf.random_normal([8192, 4096], stddev=np.sqrt(2./8192))),
         'wf10': tf.Variable(tf.random_normal([4096, 4096], stddev=np.sqrt(2./4096))),
         'wo': tf.Variable(tf.random_normal([4096, 100], stddev=np.sqrt(2./4096)))
     }
@@ -93,7 +93,7 @@ def vgg_A(x, keep_dropout, train_phase):
     fc9 = tf.nn.dropout(fc9, keep_dropout)
     
     # FC + ReLU + Dropout
-    fc10 = tf.add(tf.matmul(fc10, weights['wf10']), biases['bf10'])
+    fc10 = tf.add(tf.matmul(fc9, weights['wf10']), biases['bf10'])
     fc10 = tf.nn.relu(fc10)
     fc10 = tf.nn.dropout(fc10, keep_dropout)
 
@@ -189,7 +189,7 @@ with tf.Session() as sess:
 	            print('[%s]:' %(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
 
 	            # Calculate batch loss and accuracy on training set
-	            l, acc1, acc5 = sess.run([loss, accuracy1, accuracy5], feed_dict={x: images_batch, y: labels_batch, keep_dropout: 1., train_phase: False}) 
+	            l, acc1, acc5 = sess.run([loss, accuracy1, accuracy5], feed_dict={x: images_batch, y: labels_batch, keep_dropout: 1.}) 
 	            print("-Iter " + str(step) + ", Training Loss= " + \
 	                  "{:.6f}".format(l) + ", Accuracy Top1 = " + \
 	                  "{:.4f}".format(acc1) + ", Top5 = " + \
@@ -197,14 +197,14 @@ with tf.Session() as sess:
 
 	            # Calculate batch loss and accuracy on validation set
 	            images_batch_val, labels_batch_val = loader_val.next_batch(batch_size)    
-	            l, acc1, acc5 = sess.run([loss, accuracy1, accuracy5], feed_dict={x: images_batch_val, y: labels_batch_val, keep_dropout: 1., train_phase: False}) 
+	            l, acc1, acc5 = sess.run([loss, accuracy1, accuracy5], feed_dict={x: images_batch_val, y: labels_batch_val, keep_dropout: 1.}) 
 	            print("-Iter " + str(step) + ", Validation Loss= " + \
 	                  "{:.6f}".format(l) + ", Accuracy Top1 = " + \
 	                  "{:.4f}".format(acc1) + ", Top5 = " + \
 	                  "{:.4f}".format(acc5))
 	        
 	        # Run optimization op (backprop)
-	        sess.run(train_optimizer, feed_dict={x: images_batch, y: labels_batch, keep_dropout: dropout, train_phase: True})
+	        sess.run(train_optimizer, feed_dict={x: images_batch, y: labels_batch, keep_dropout: dropout})
 	        
 	        step += 1
 	        
@@ -225,7 +225,7 @@ with tf.Session() as sess:
 	    loader_val.reset()
 	    for i in range(num_batch):
 	        images_batch, labels_batch = loader_val.next_batch(batch_size)    
-	        acc1, acc5 = sess.run([accuracy1, accuracy5], feed_dict={x: images_batch, y: labels_batch, keep_dropout: 1., train_phase: False})
+	        acc1, acc5 = sess.run([accuracy1, accuracy5], feed_dict={x: images_batch, y: labels_batch, keep_dropout: 1.})
 	        acc1_total += acc1
 	        acc5_total += acc5
 	        print("Validation Accuracy Top1 = " + \
@@ -244,6 +244,6 @@ with tf.Session() as sess:
     with open("pred.txt", "w") as f:
 	    for i in range(num_batch):
 	        images_batch, labels_batch = loader_test.next_batch(batch_size)
-	        labels = sess.run(predict, feed_dict={x: images_batch, keep_dropout: 1., train_phase: False})[1]
+	        labels = sess.run(predict, feed_dict={x: images_batch, keep_dropout: 1.})[1]
 	        for item in labels:
 	        	f.write("test/"+str(i+1).zfill(8)+".jpg "+ " ".join([str(it) for it in item])+"\n")

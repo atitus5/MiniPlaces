@@ -7,7 +7,7 @@ from DataLoader import *
 # Dataset Parameters
 batch_size = 100
 load_size = 128
-fine_size = 128
+fine_size = 100
 c = 3
 
 # Note: may want to actually recompute this, or just do away with it...
@@ -19,8 +19,8 @@ dropout = 0.5 # Dropout, probability to keep units
 training_iters = 10000
 step_display = 50
 step_save = 200
-path_save = './saved_models_efc/alexnet_bn'
-start_from = '5000'
+path_save = './saved_models/alexnet_bn_efc'
+start_from = ''
 
 test_only = False
 
