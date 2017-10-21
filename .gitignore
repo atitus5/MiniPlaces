@@ -5,3 +5,5 @@ miniplaces/*
 *.h5
 *.pyc
 *.swp
+logs/*
+saved_models/*

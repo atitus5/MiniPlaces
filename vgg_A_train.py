@@ -16,9 +16,9 @@ data_mean = np.asarray([0.45834960097,0.44674252445,0.41352266842])
 # Training Parameters
 learning_rate = 0.001
 dropout = 0.5 # Dropout, probability to keep units
-training_iters = 10000
+training_iters = 100000
 step_display = 25
-step_save = 100
+step_save = 1000
 path_save = './saved_models/vgg_A'
 start_from = ''
 
@@ -134,13 +134,13 @@ opt_data_test = {
 # loader_train = DataLoaderDisk(**opt_data_train)
 # loader_val = DataLoaderDisk(**opt_data_val)
 if not test_only:
-    print("Loading train data...")
+    print("Loading train data...", flush=True)
     loader_train = DataLoaderH5(**opt_data_train)
 
-    print("Loading validation data...")
+    print("Loading validation data...", flush=True)
     loader_val = DataLoaderH5(**opt_data_val)
 
-print("Loading test data...")
+print("Loading test data...", flush=True)
 loader_test = DataLoaderH5(**opt_data_test)
 
 # tf Graph input
@@ -164,8 +164,8 @@ predict = tf.nn.top_k(logits, 5)
 # define initialization
 init = tf.global_variables_initializer()
 
-# define saver
-saver = tf.train.Saver()
+# define saver (only saves best so far)
+saver = tf.train.Saver(max_to_keep=1)
 
 # define summary writer
 #writer = tf.train.SummaryWriter('.', graph=tf.get_default_graph())
@@ -186,14 +186,14 @@ with tf.Session() as sess:
 	        images_batch, labels_batch = loader_train.next_batch(batch_size)
 	        
 	        if step % step_display == 0:
-	            print('[%s]:' %(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+	            print('[%s]:' %(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")), flush=True)
 
 	            # Calculate batch loss and accuracy on training set
 	            l, acc1, acc5 = sess.run([loss, accuracy1, accuracy5], feed_dict={x: images_batch, y: labels_batch, keep_dropout: 1.}) 
 	            print("-Iter " + str(step) + ", Training Loss= " + \
 	                  "{:.6f}".format(l) + ", Accuracy Top1 = " + \
 	                  "{:.4f}".format(acc1) + ", Top5 = " + \
-	                  "{:.4f}".format(acc5))
+	                  "{:.4f}".format(acc5), flush=True)
 
 	            # Calculate batch loss and accuracy on validation set
 	            images_batch_val, labels_batch_val = loader_val.next_batch(batch_size)    
@@ -201,7 +201,7 @@ with tf.Session() as sess:
 	            print("-Iter " + str(step) + ", Validation Loss= " + \
 	                  "{:.6f}".format(l) + ", Accuracy Top1 = " + \
 	                  "{:.4f}".format(acc1) + ", Top5 = " + \
-	                  "{:.4f}".format(acc5))
+	                  "{:.4f}".format(acc5), flush=True)
 	        
 	        # Run optimization op (backprop)
 	        sess.run(train_optimizer, feed_dict={x: images_batch, y: labels_batch, keep_dropout: dropout})
@@ -211,14 +211,14 @@ with tf.Session() as sess:
 	        # Save model
 	        if step % step_save == 0:
 	            saver.save(sess, path_save, global_step=step)
-	            print("Model saved at Iter %d !" %(step))
+	            print("Model saved at Iter %d !" %(step), flush=True)
 	        
-	    print("Optimization Finished!")
+	    print("Optimization Finished!", flush=True)
 	    
 
 		
 	    # Evaluate on the whole validation set
-	    print('Evaluation on the whole validation set...')
+	    print('Evaluation on the whole validation set...', flush=True)
 	    num_batch = loader_val.size()//batch_size
 	    acc1_total = 0.
 	    acc5_total = 0.
@@ -230,15 +230,15 @@ with tf.Session() as sess:
 	        acc5_total += acc5
 	        print("Validation Accuracy Top1 = " + \
 	              "{:.4f}".format(acc1) + ", Top5 = " + \
-	              "{:.4f}".format(acc5))
+	              "{:.4f}".format(acc5), flush=True)
 
 	    acc1_total /= num_batch
 	    acc5_total /= num_batch
-	    print('Evaluation Finished! Accuracy Top1 = ' + "{:.4f}".format(acc1_total) + ", Top5 = " + "{:.4f}".format(acc5_total))
+	    print('Evaluation Finished! Accuracy Top1 = ' + "{:.4f}".format(acc1_total) + ", Top5 = " + "{:.4f}".format(acc5_total), flush=True)
     
 
     # Evaluate on the whole test set
-    print('results on the test set')
+    print('results on the test set', flush=True)
     num_batch = loader_test.size()//batch_size
     loader_test.reset()
     with open("pred.txt", "w") as f:
