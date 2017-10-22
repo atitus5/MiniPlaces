@@ -66,6 +66,6 @@ if __name__=='__main__':
     		'data_list': 'development_kit/data/test.txt'
 	}
 
-	#createH5(params_train)
+	createH5(params_train)
 	createH5(params_val)
 	createH5(params_test)

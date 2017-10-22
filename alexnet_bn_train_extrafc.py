@@ -7,20 +7,20 @@ from DataLoader import *
 # Dataset Parameters
 batch_size = 100
 load_size = 128
-fine_size = 128
+fine_size = 100
 c = 3
 
 # Note: may want to actually recompute this, or just do away with it...
 data_mean = np.asarray([0.45834960097,0.44674252445,0.41352266842])
 
 # Training Parameters
-learning_rate = 0.0005
-dropout = 0.15 # Dropout, probability to keep units
-training_iters = 40000
-step_display = 500
-step_save = 1000
-path_save = './saved_models_efc/alexnet_bn_more_dropping'
-start_from = '20000'
+learning_rate = 0.001
+dropout = 0.5 # Dropout, probability to keep units
+training_iters = 10000
+step_display = 50
+step_save = 200
+path_save = './saved_models/alexnet_bn_efc'
+start_from = ''
 
 test_only = False
 
