@@ -7,3 +7,4 @@ miniplaces/*
 *.swp
 logs/*
 saved_models/*
+pred*
