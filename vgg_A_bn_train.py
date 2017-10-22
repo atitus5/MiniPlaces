@@ -25,10 +25,18 @@ num_epochs = 75
 training_iters = (100000 / batch_size) * num_epochs     # Based on VGG paper
 step_display = 50
 step_save = training_iters / num_epochs     # Once per epoch
-path_save = './saved_models/vgg_A'
-start_from = '28000'
+path_save = './saved_models/vgg_A_bn'
+start_from = ''
 
-eval_only = True
+eval_only = False
+
+def batch_norm_layer(x, train_phase, scope_bn):
+    return batch_norm(x, decay=0.9, center=True, scale=True,
+    updates_collections=None,
+    is_training=train_phase,
+    reuse=None,
+    trainable=True,
+    scope=scope_bn)
     
 weights = {
     'wc1': tf.Variable(tf.random_normal([3, 3, 3, 64], stddev=np.sqrt(2./(3*3*3)))),
@@ -60,46 +68,56 @@ biases = {
     'bo': tf.Variable(tf.zeros(100))
 }
 
-def vgg_A(x, keep_dropout):
+def vgg_A(x, keep_dropout, train_phase):
     # Conv3-64 + ReLU + 2x2 Pool
     conv1 = tf.nn.conv2d(x, weights['wc1'], strides=[1, 1, 1, 1], padding='SAME')
+    conv1 = batch_norm_layer(conv1, train_phase, 'bn1')
     conv1 = tf.nn.relu(tf.nn.bias_add(conv1, biases['bc1']))
     pool1 = tf.nn.max_pool(conv1, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
     
     # Conv3-128 + ReLU + 2x2 Pool
     conv2 = tf.nn.conv2d(pool1, weights['wc2'], strides=[1, 1, 1, 1], padding='SAME')
+    conv2 = batch_norm_layer(conv2, train_phase, 'bn2')
     conv2 = tf.nn.relu(tf.nn.bias_add(conv2, biases['bc2']))
     pool2 = tf.nn.max_pool(conv2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
     
     # Conv3-256 + ReLU + Conv3-256 + ReLU + 2x2 Pool
     conv3 = tf.nn.conv2d(pool2, weights['wc3'], strides=[1, 1, 1, 1], padding='SAME')
+    conv3 = batch_norm_layer(conv3, train_phase, 'bn3')
     conv3 = tf.nn.relu(tf.nn.bias_add(conv3, biases['bc3']))
     conv4 = tf.nn.conv2d(conv3, weights['wc4'], strides=[1, 1, 1, 1], padding='SAME')
+    conv4 = batch_norm_layer(conv4, train_phase, 'bn4')
     conv4 = tf.nn.relu(tf.nn.bias_add(conv4, biases['bc4']))
     pool3 = tf.nn.max_pool(conv4, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
     
     # Conv3-512 + ReLU + Conv3-512 + ReLU + 2x2 Pool
     conv5 = tf.nn.conv2d(pool3, weights['wc5'], strides=[1, 1, 1, 1], padding='SAME')
+    conv5 = batch_norm_layer(conv5, train_phase, 'bn5')
     conv5 = tf.nn.relu(tf.nn.bias_add(conv5, biases['bc5']))
     conv6 = tf.nn.conv2d(conv5, weights['wc6'], strides=[1, 1, 1, 1], padding='SAME')
+    conv6 = batch_norm_layer(conv6, train_phase, 'bn6')
     conv6 = tf.nn.relu(tf.nn.bias_add(conv6, biases['bc6']))
     pool4 = tf.nn.max_pool(conv6, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
     # Conv3-512 + ReLU + Conv3-512 + ReLU + 2x2 Pool
     conv7 = tf.nn.conv2d(pool4, weights['wc7'], strides=[1, 1, 1, 1], padding='SAME')
+    conv7 = batch_norm_layer(conv7, train_phase, 'bn7')
     conv7 = tf.nn.relu(tf.nn.bias_add(conv7, biases['bc7']))
     conv8 = tf.nn.conv2d(conv7, weights['wc8'], strides=[1, 1, 1, 1], padding='SAME')
+    conv8 = batch_norm_layer(conv8, train_phase, 'bn8')
     conv8 = tf.nn.relu(tf.nn.bias_add(conv8, biases['bc8']))
     pool5 = tf.nn.max_pool(conv8, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
     # FC + ReLU + Dropout
     fc9 = tf.reshape(pool5, [-1, weights['wf9'].get_shape().as_list()[0]])
     fc9 = tf.add(tf.matmul(fc9, weights['wf9']), biases['bf9'])
+    fc9 = batch_norm_layer(fc9, train_phase, 'bn9')
     fc9 = tf.nn.relu(fc9)
     fc9 = tf.nn.dropout(fc9, keep_dropout)
     
     # FC + ReLU + Dropout
     fc10 = tf.add(tf.matmul(fc9, weights['wf10']), biases['bf10'])
+    fc10 = batch_norm_layer(fc10, train_phase, 'bn10')
     fc10 = tf.nn.relu(fc10)
     fc10 = tf.nn.dropout(fc10, keep_dropout)
 
@@ -153,9 +171,10 @@ loader_test = DataLoaderH5(**opt_data_test)
 x = tf.placeholder(tf.float32, [None, fine_size, fine_size, c])
 y = tf.placeholder(tf.int64, None)
 keep_dropout = tf.placeholder(tf.float32)
+train_phase = tf.placeholder(tf.bool)
 
 # Construct model
-logits = vgg_A(x, keep_dropout)
+logits = vgg_A(x, keep_dropout, train_phase)
 
 # Define loss and optimizer
 loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=y, logits=logits))
@@ -204,7 +223,7 @@ with tf.Session() as sess:
                 print('[%s]:' %(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")), flush=True)
 
                 # Calculate batch loss and accuracy on training set
-                l, acc1, acc5 = sess.run([loss, accuracy1, accuracy5], feed_dict={x: images_batch, y: labels_batch, keep_dropout: 1., lr_placeholder: current_lr}) 
+                l, acc1, acc5 = sess.run([loss, accuracy1, accuracy5], feed_dict={x: images_batch, y: labels_batch, keep_dropout: 1., lr_placeholder: current_lr, train_phase: False}) 
                 print("-Iter " + str(step) + ", Training Loss= " + \
                       "{:.6f}".format(l) + ", Accuracy Top1 = " + \
                       "{:.4f}".format(acc1) + ", Top5 = " + \
@@ -212,7 +231,7 @@ with tf.Session() as sess:
 
                 # Calculate batch loss and accuracy on validation set
                 images_batch_val, labels_batch_val = loader_val.next_batch(batch_size)    
-                l, acc1, acc5 = sess.run([loss, accuracy1, accuracy5], feed_dict={x: images_batch_val, y: labels_batch_val, keep_dropout: 1., lr_placeholder: current_lr}) 
+                l, acc1, acc5 = sess.run([loss, accuracy1, accuracy5], feed_dict={x: images_batch_val, y: labels_batch_val, keep_dropout: 1., lr_placeholder: current_lr, train_phase: False}) 
                 val_loss_sum += l
                 print("-Iter " + str(step) + ", Validation Loss= " + \
                       "{:.6f}".format(l) + ", Accuracy Top1 = " + \
@@ -220,7 +239,7 @@ with tf.Session() as sess:
                       "{:.4f}".format(acc5), flush=True)
             
             # Run optimization op (backprop)
-            sess.run(train_optimizer, feed_dict={x: images_batch, y: labels_batch, keep_dropout: dropout, lr_placeholder: current_lr})
+            sess.run(train_optimizer, feed_dict={x: images_batch, y: labels_batch, keep_dropout: dropout, lr_placeholder: current_lr, train_phase: True})
             
             step += 1
             
@@ -258,7 +277,7 @@ with tf.Session() as sess:
     loader_val.reset()
     for i in range(num_batch):
         images_batch, labels_batch = loader_val.next_batch(batch_size)    
-        acc1, acc5 = sess.run([accuracy1, accuracy5], feed_dict={x: images_batch, y: labels_batch, keep_dropout: 1., lr_placeholder: current_lr})
+        acc1, acc5 = sess.run([accuracy1, accuracy5], feed_dict={x: images_batch, y: labels_batch, keep_dropout: 1., lr_placeholder: current_lr, train_phase: False})
         acc1_total += acc1
         acc5_total += acc5
         print("Validation Accuracy Top1 = " + \
@@ -277,7 +296,7 @@ with tf.Session() as sess:
     with open("pred.txt", "w") as f:
         for i in range(num_batch):
             images_batch, labels_batch = loader_test.next_batch(batch_size)
-            labels = sess.run(predict, feed_dict={x: images_batch, keep_dropout: 1., lr_placeholder: current_lr})[1]
+            labels = sess.run(predict, feed_dict={x: images_batch, keep_dropout: 1., lr_placeholder: current_lr, train_phase: False})[1]
             for j in range(len(labels)):
                 item = labels[j]
                 f.write("test/"+str((i * batch_size) + j + 1).zfill(8)+".jpg "+ " ".join([str(it) for it in item])+"\n")
