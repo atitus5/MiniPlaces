@@ -25,8 +25,8 @@ num_epochs = 75
 training_iters = (100000 / batch_size) * num_epochs     # Based on VGG paper
 step_display = 50
 step_save = training_iters / num_epochs     # Once per epoch
-path_save = './saved_models/vgg_small_bn'
-start_from = '12000'
+path_save = './saved_models/vgg_receptor_bn'
+start_from = '9000'
 
 eval_only = False
 
@@ -41,10 +41,10 @@ def batch_norm_layer(x, train_phase, scope_bn):
 weights = {
     'wc1': tf.Variable(tf.random_normal([3, 3, 3, 64], stddev=np.sqrt(2./(3*3*3)))),
     'wc2': tf.Variable(tf.random_normal([3, 3, 64, 128], stddev=np.sqrt(2./(3*3*64)))),
-    'wc3': tf.Variable(tf.random_normal([3, 3, 128, 256], stddev=np.sqrt(2./(3*3*128)))),
-    'wc4': tf.Variable(tf.random_normal([3, 3, 256, 256], stddev=np.sqrt(2./(3*3*256)))),
-    'wc5': tf.Variable(tf.random_normal([3, 3, 256, 512], stddev=np.sqrt(2./(3*3*256)))),
-    'wc6': tf.Variable(tf.random_normal([3, 3, 512, 512], stddev=np.sqrt(2./(3*3*512)))),
+    'wc3': tf.Variable(tf.random_normal([3, 5, 128, 256], stddev=np.sqrt(2./(3*5*128)))),
+    'wc4': tf.Variable(tf.random_normal([5, 3, 256, 256], stddev=np.sqrt(2./(5*3*256)))),
+    'wc5': tf.Variable(tf.random_normal([3, 5, 256, 512], stddev=np.sqrt(2./(3*5*256)))),
+    'wc6': tf.Variable(tf.random_normal([5, 3, 512, 512], stddev=np.sqrt(2./(5*3*512)))),
 
     'wf7': tf.Variable(tf.random_normal([25088, 4096], stddev=np.sqrt(2./25088))),
     'wf8': tf.Variable(tf.random_normal([4096, 4096], stddev=np.sqrt(2./4096))),
@@ -64,7 +64,7 @@ biases = {
     'bo': tf.Variable(tf.zeros(100))
 }
 
-def vgg_small(x, keep_dropout, train_phase):
+def vgg_receptor(x, keep_dropout, train_phase):
     # Conv3-64 + ReLU + 2x2 Pool
     conv1 = tf.nn.conv2d(x, weights['wc1'], strides=[1, 1, 1, 1], padding='SAME')
     conv1 = batch_norm_layer(conv1, train_phase, 'bn1')
@@ -77,7 +77,7 @@ def vgg_small(x, keep_dropout, train_phase):
     conv2 = tf.nn.relu(tf.nn.bias_add(conv2, biases['bc2']))
     pool2 = tf.nn.max_pool(conv2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
     
-    # Conv3-256 + ReLU + Conv3-256 + ReLU + 2x2 Pool
+    # Conv5-256 + ReLU + Conv3-256 + ReLU + 2x2 Pool
     conv3 = tf.nn.conv2d(pool2, weights['wc3'], strides=[1, 1, 1, 1], padding='SAME')
     conv3 = batch_norm_layer(conv3, train_phase, 'bn3')
     conv3 = tf.nn.relu(tf.nn.bias_add(conv3, biases['bc3']))
@@ -86,7 +86,7 @@ def vgg_small(x, keep_dropout, train_phase):
     conv4 = tf.nn.relu(tf.nn.bias_add(conv4, biases['bc4']))
     pool3 = tf.nn.max_pool(conv4, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
     
-    # Conv3-512 + ReLU + Conv3-512 + ReLU + 2x2 Pool
+    # Conv5-512 + ReLU + Conv3-512 + ReLU + 2x2 Pool
     conv5 = tf.nn.conv2d(pool3, weights['wc5'], strides=[1, 1, 1, 1], padding='SAME')
     conv5 = batch_norm_layer(conv5, train_phase, 'bn5')
     conv5 = tf.nn.relu(tf.nn.bias_add(conv5, biases['bc5']))
@@ -161,7 +161,7 @@ keep_dropout = tf.placeholder(tf.float32)
 train_phase = tf.placeholder(tf.bool)
 
 # Construct model
-logits = vgg_small(x, keep_dropout, train_phase)
+logits = vgg_receptor(x, keep_dropout, train_phase)
 
 # Define loss and optimizer
 loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=y, logits=logits))
