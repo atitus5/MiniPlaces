@@ -26,7 +26,7 @@ training_iters = (100000 / batch_size) * num_epochs     # Based on VGG paper
 step_display = 50
 step_save = training_iters / num_epochs     # Once per epoch
 path_save = './saved_models/vgg_receptor_bn'
-start_from = '9000'
+start_from = '18000'
 
 eval_only = False
 
