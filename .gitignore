@@ -8,3 +8,7 @@ miniplaces/*
 logs/*
 saved_models/*
 pred*
+
+*.pdf
+*.bbl
+*.blg
