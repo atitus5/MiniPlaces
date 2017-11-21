@@ -1,0 +1,25 @@
+iter 35000
+Evaluation Finished! Accuracy Top1 = 0.2884, Top5 = 0.5830
+Accuracy Top1 = 0.3413, Top5 = 0.6527 Average place = 6.6861
+
+iter 57000
+Evaluation Finished! Accuracy Top1 = 0.3265, Top5 = 0.6248
+Accuracy Top1 = 0.3896, Top5 = 0.6960 Average place = 5.6881
+
+iter 68000
+Evaluation Finished! Accuracy Top1 = 0.3360, Top5 = 0.6329
+Accuracy Top1 = 0.4003, Top5 = 0.7049 Average place = 5.5462
+
+iter 89000
+Evaluation Finished! Accuracy Top1 = 0.3446, Top5 = 0.6429
+Accuracy Top1 = 0.4110, Top5 = 0.7172 Average place = 5.2523
+
+iter 107000
+Evaluation Finished! Accuracy Top1 = 0.3752, Top5 = 0.6744
+Accuracy Top1 = 0.4443, Top5 = 0.7539 Average place = 4.6411
+
+iter 114000
+Evaluation Finished! Accuracy Top1 = 0.3770, Top5 = 0.6753
+Accuracy Top1 = 0.4473, Top5 = 0.7548 Average place = 4.5759
+
+

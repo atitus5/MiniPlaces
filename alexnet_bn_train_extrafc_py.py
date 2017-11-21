@@ -2,27 +2,28 @@ import os, datetime
 import numpy as np
 import tensorflow as tf
 from tensorflow.contrib.layers.python.layers import batch_norm
-from DataLoader_multi import *
+from DataLoader import *
+import matplotlib.pyplot as plt
 
 # Dataset Parameters
-batch_size = 20
-load_size = 128
-fine_size = 96
+batch_size = 100
+load_size_x = 192
+load_size_y = 128
 c = 3
 
 # Note: may want to actually recompute this, or just do away with it...
 data_mean = np.asarray([0.45834960097,0.44674252445,0.41352266842])
 
 # Training Parameters
-learning_rate = 0.000001
-dropout = 0.5 # Dropout, probability to keep units
-training_iters = 200000
+learning_rate = 0.0005
+dropout = 0.4 # Dropout, probability to keep units
+training_iters = 40000
 step_display = 500
-step_save = 1000
-path_save = './saved_models/alexnet_bn_multi'
-start_from = '165000'
+step_save = 2000
+path_save = './saved_models_efc/alexnet_bn_pyramid_seven'
+start_from = '4000'
 
-test_only = True
+test_only = False
 
 def batch_norm_layer(x, train_phase, scope_bn):
     return batch_norm(x, decay=0.9, center=True, scale=True,
@@ -34,15 +35,16 @@ def batch_norm_layer(x, train_phase, scope_bn):
     
 def alexnet(x, keep_dropout, train_phase):
     weights = {
-        'wc1': tf.Variable(tf.random_normal([11, 11, 3, 96], stddev=np.sqrt(2./(11*11*3)))),
-        'wc2': tf.Variable(tf.random_normal([5, 5, 96, 256], stddev=np.sqrt(2./(5*5*96)))),
-        'wc3': tf.Variable(tf.random_normal([3, 3, 256, 384], stddev=np.sqrt(2./(3*3*256)))),
-        'wc4': tf.Variable(tf.random_normal([3, 3, 384, 256], stddev=np.sqrt(2./(3*3*384)))),
-        'wc5': tf.Variable(tf.random_normal([3, 3, 256, 256], stddev=np.sqrt(2./(3*3*256)))),
+        'wc1': tf.Variable(tf.random_normal([7, 7, 3, 32], stddev=np.sqrt(2./(7*7*3)))),
+        'wc2': tf.Variable(tf.random_normal([7, 7, 32, 64], stddev=np.sqrt(2./(7*7*32)))),
+        'wc3': tf.Variable(tf.random_normal([5, 5, 64, 128], stddev=np.sqrt(2./(5*5*64)))),
+        'wc4': tf.Variable(tf.random_normal([3, 3, 128, 256], stddev=np.sqrt(2./(3*3*128)))),
+        'wc5': tf.Variable(tf.random_normal([3, 3, 256, 128], stddev=np.sqrt(2./(3*3*256)))),
 
-        'wf6': tf.Variable(tf.random_normal([9*256, 4096], stddev=np.sqrt(2./(8*8*64)))),
-        'wf7': tf.Variable(tf.random_normal([4096, 4096], stddev=np.sqrt(2./4096))),
-        'wo': tf.Variable(tf.random_normal([4096, 100], stddev=np.sqrt(2./4096)))
+        'wf6': tf.Variable(tf.random_normal([24*128, 2048], stddev=np.sqrt(2./(24*2048)))),
+        'wf7': tf.Variable(tf.random_normal([2048, 2048], stddev=np.sqrt(2./2048))),
+        'wf8': tf.Variable(tf.random_normal([2048, 2048], stddev=np.sqrt(2./2048))),
+        'wo': tf.Variable(tf.random_normal([2048, 100], stddev=np.sqrt(2./2048)))
     }
 
     biases = {
@@ -89,37 +91,46 @@ def alexnet(x, keep_dropout, train_phase):
     fc7 = batch_norm_layer(fc7, train_phase, 'bn7')
     fc7 = tf.nn.relu(fc7)
     fc7 = tf.nn.dropout(fc7, keep_dropout)
-
+    
+    # FC + ReLU + Dropout
+    fc8 = tf.matmul(fc7, weights['wf8'])
+    fc8 = batch_norm_layer(fc8, train_phase, 'bn8')
+    fc8 = tf.nn.relu(fc8)
+    fc8 = tf.nn.dropout(fc8, keep_dropout)
+    
     # Output FC
-    out = tf.add(tf.matmul(fc7, weights['wo']), biases['bo'])
+    out = tf.add(tf.matmul(fc8, weights['wo']), biases['bo'])
     
     return out
 
 # Construct dataloader
 opt_data_train = {
-    'data_h5': 'miniplaces_128_train.h5',
+    'data_h5': 'miniplaces_128_train_py.h5',
     'data_root': 'images/',   # MODIFY PATH ACCORDINGLY
     'data_list': 'development_kit/data/train.txt', # MODIFY PATH ACCORDINGLY
-    'load_size': load_size,
-    'fine_size': fine_size,
+    'load_size_x': load_size_x,
+    'load_size_y': load_size_y,
+    #'fine_size': fine_size,
     'data_mean': data_mean,
     'randomize': True
     }
 opt_data_val = {
-    'data_h5': 'miniplaces_128_val.h5',
+    'data_h5': 'miniplaces_128_val_py.h5',
     'data_root': 'images/',   # MODIFY PATH ACCORDINGLY
     'data_list': 'development_kit/data/val.txt',   # MODIFY PATH ACCORDINGLY
-    'load_size': load_size,
-    'fine_size': fine_size,
+    'load_size_x': load_size_x,
+    'load_size_y': load_size_y,
+    #'fine_size': fine_size,
     'data_mean': data_mean,
     'randomize': False
     }
 opt_data_test = {
-    'data_h5': 'miniplaces_128_test.h5',
+    'data_h5': 'miniplaces_128_test_py.h5',
     'data_root': 'images/',   # MODIFY PATH ACCORDINGLY
     'data_list': 'development_kit/data/test.txt',   # MODIFY PATH ACCORDINGLY
-    'load_size': load_size,
-    'fine_size': fine_size,
+    'load_size_x': load_size_x,
+    'load_size_y': load_size_y,
+    #'fine_size': fine_size,
     'data_mean': data_mean,
     'randomize': False
     }
@@ -136,7 +147,7 @@ loader_val = DataLoaderH5(**opt_data_val)
 print("Loading test data...")
 loader_test = DataLoaderH5(**opt_data_test)
 # tf Graph input
-x = tf.placeholder(tf.float32, [None, fine_size, fine_size, c])
+x = tf.placeholder(tf.float32, [None, load_size_y, load_size_x, c])
 y = tf.placeholder(tf.int64, None)
 keep_dropout = tf.placeholder(tf.float32)
 train_phase = tf.placeholder(tf.bool)
@@ -153,29 +164,6 @@ accuracy1 = tf.reduce_mean(tf.cast(tf.nn.in_top_k(logits, y, 1), tf.float32))
 accuracy5 = tf.reduce_mean(tf.cast(tf.nn.in_top_k(logits, y, 5), tf.float32))
 
 predict = tf.nn.top_k(logits, 5)
-
-val_guesses = np.zeros(shape=(10000,100))
-
-val_correct = []
-with open('development_kit/data/val.txt') as f:
-    for line in f:
-        val_correct.append(int(line.split()[1]))
-
-def evaluate_guesses(label_guesses):
-    acc_1_sum = 0
-    acc_5_sum = 0
-    pos_sum = 0
-    for i in range(10000):
-        correct = val_correct[i]
-        lis = list(label_guesses[i])
-        pos_sum += lis.index(correct)
-        if correct == lis[0]:
-            acc_1_sum += 1
-            acc_5_sum += 1
-        elif correct in lis[0:5]:
-            acc_5_sum += 1
-    print('Accuracy Top1 = ' + "{:.4f}".format(acc_1_sum/10000.0) + ", Top5 = " + "{:.4f}".format(acc_5_sum/10000.0) + " Average place = " + "{:.4f}".format(pos_sum/10000.0))
-    
 
 # define initialization
 init = tf.global_variables_initializer()
@@ -197,12 +185,11 @@ with tf.Session() as sess:
         step = 0
 
     
-    
-    
+
     if not test_only:
         while step < training_iters:
             # Load a batch of training data
-            images_batch, labels_batch = loader_train.next_batch_all(batch_size)
+            images_batch, labels_batch = loader_train.next_batch(batch_size)
             
             if step % step_display == 0:
                 print('[%s]:' %(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
@@ -215,7 +202,7 @@ with tf.Session() as sess:
                       "{:.4f}".format(acc5))
 
                 # Calculate batch loss and accuracy on validation set
-                images_batch_val, labels_batch_val = loader_val.next_batch_all(batch_size)    
+                images_batch_val, labels_batch_val = loader_val.next_batch(batch_size)    
                 l, acc1, acc5 = sess.run([loss, accuracy1, accuracy5], feed_dict={x: images_batch_val, y: labels_batch_val, keep_dropout: 1., train_phase: False}) 
                 print("-Iter " + str(step) + ", Validation Loss= " + \
                       "{:.6f}".format(l) + ", Accuracy Top1 = " + \
@@ -243,32 +230,28 @@ with tf.Session() as sess:
     acc5_total = 0.
     loader_val.reset()
     for i in range(num_batch):
-        print(i, "out of ", num_batch)
-        images_batch, labels_batch = loader_val.next_batch_all(batch_size)    
-        acc1, acc5, probs = sess.run([accuracy1, accuracy5, logits], feed_dict={x: images_batch, y: labels_batch, keep_dropout: 1., train_phase: False})
+        images_batch, labels_batch = loader_val.next_batch(batch_size)    
+        acc1, acc5 = sess.run([accuracy1, accuracy5], feed_dict={x: images_batch, y: labels_batch, keep_dropout: 1., train_phase: False})
         acc1_total += acc1
         acc5_total += acc5
-        for j in range(batch_size):
-            val_guesses[i*batch_size+j,:] += np.average(probs[9*j:9*(j+1)], axis=0)
-
-        print("Validation Accuracy Top1 = " + \
-              "{:.4f}".format(acc1_total/(i+1)) + ", Top5 = " + \
-              "{:.4f}".format(acc5_total/(i+1)))
+        #print("Validation Accuracy Top1 = " + \
+        #      "{:.4f}".format(acc1) + ", Top5 = " + \
+        #      "{:.4f}".format(acc5))
 
     acc1_total /= num_batch
     acc5_total /= num_batch
     print('Evaluation Finished! Accuracy Top1 = ' + "{:.4f}".format(acc1_total) + ", Top5 = " + "{:.4f}".format(acc5_total))
-    label_guesses = np.argsort(-val_guesses)
-    evaluate_guesses(label_guesses)  
-"""
-        # Evaluate on the whole validation set
+
+    """
     print('results on the test set')
     num_batch = loader_test.size()//batch_size
     loader_test.reset()
-    with open("pred.txt", "w") as f:
+    counter = 1
+    with open("pred2.txt", "w") as f:
         for i in range(num_batch):
             images_batch, labels_batch = loader_test.next_batch(batch_size)
             labels = sess.run(predict, feed_dict={x: images_batch, keep_dropout: 1., train_phase: False})[1]
             for item in labels:
-                f.write("test/"+str(i+1).zfill(8)+".jpg "+ " ".join([str(it) for it in item])+"\n")
-"""
+                f.write("test/"+str(counter).zfill(8)+".jpg "+ " ".join([str(it) for it in item])+"\n")
+                counter+=1
+    """
