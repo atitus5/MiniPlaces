@@ -7,6 +7,8 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 
+\usepackage{booktabs}
+
 % Include other packages here, before hyperref.
 
 % If you comment hyperref and then uncomment it, you should delete
@@ -21,13 +23,13 @@
 
 % Pages are numbered in submission mode, and unnumbered in camera-ready
 %\ifcvprfinal\pagestyle{empty}\fi
-\setcounter{page}{4321}
+\setcounter{page}{1}
 \begin{document}
 
 %%%%%%%%% TITLE
-\title{TODO}
+\title{MiniPlaces Report}
 
-\author{Andrew Titus, Brian Wheatman\\
+\author{Andrew Titus (6.869), Brian Wheatman (6.869)\\
 Massachusetts Institute of Technology\\
 77 Massachusetts Avenue, Cambridge, MA 02139\\
 {\tt\small \{atitus, wheatman\}@mit.edu}
@@ -43,392 +45,285 @@ Massachusetts Institute of Technology\\
 
 %%%%%%%%% ABSTRACT
 \begin{abstract}
-   The ABSTRACT is to be in fully-justified italicized text, at the top
-   of the left-hand column, below the author and affiliation
-   information. Use the word ``Abstract'' as the title, in 12-point
-   Times, boldface type, centered relative to the column, initially
-   capitalized. The abstract is to be in 10-point, single-spaced type.
-   Leave two blank lines after the Abstract, then begin the main text.
-   Look at previous CVPR abstracts to get a feel for style and length.
+The ability to determine what the surroundings are
+in an image or video is important for various computer vision tasks,
+such as motion planning and object recognition. Various
+convolutional neural network architectures have shown great
+promise in approaching human levels at this ability, called
+scene recognition \cite{Places}. In this paper, we
+investigate two such architectures, AlexNet \cite{AlexNet}
+and VGG \cite{VGG}, and explore various modifications to these
+networks in order to maximize performance on the MiniPlaces
+dataset, a subset of the larger Places2 dataset \cite{Places}.
+Results show that adjustments to hidden layer sizes, performing
+batch normalization and using learning rate decay schedules with
+early stopping yielded a $6.0\%$
+relative improvement on test set Top-1 accuracy and a
+$8.6\%$ relative improvement
+on test set Top-5 accuracy when compared to the baselines of these
+architectures.
 \end{abstract}
 
 %%%%%%%%% BODY TEXT
 \section{Introduction}
+Scene recognition is a classic task in computer vision.  Given an image, a system seeks to label the image with a class from some set of predefined scenes.  In recent years this has been done using convolutional neural networks\cite{AlexNet} \cite{VGG}.  We investigate several of these architectures to determine what are the necessary characteristics of effective scene recognition systems and how we might improve them.  
 
-Please follow the steps outlined below when submitting your manuscript to
-the IEEE Computer Society Press.  This style guide now has several
-important modifications (for example, you are no longer warned against the
-use of sticky tape to attach your artwork to the paper), so all authors
-should read this new version.
+For this paper, we wish to be able to determine the scene category for the images
+in MiniPlaces, a subset of the Places2 dataset \cite{Places}, out of 100
+possible scenes. Our approach to this problem is to evaluate
+various existing neural net architectures for computer vision and
+seeing how they are able to do on the validation set of 10,000 images,
+in order to determine areas of improvement to address with our own
+modified models. We start by training baseline models based on
+the AlexNet \cite{AlexNet} and VGG \cite{VGG} convolutional neural
+network architectures as starting points and adapt the architecture
+to our specific problem based on experimental results. These results
+include Top-1 accuracy (percentage of examples for which the model
+correctly guessed the true label) and Top-5 accuracy (percentage of
+examples for which the true label was in the model's top 5 guesses),
+as well as more practical considerations, such as training time,
+memory usage and generalization to validation and evaluation datasets.
 
-%-------------------------------------------------------------------------
-\subsection{Language}
+\subsection{Experimental Setup}
+\label{exp_setup}
+The MiniPlaces dataset consists of 120,000 images. Of these, 110,000 are labeled with one of 100 categories and 10,000 are not labeled.  We used these 100,000 of these labeled images as our training set and 10,000 of them as the validation set.  The 100,000 images in the training set had 1,000 of each category.  The 10,000 unlabeled images were the test set and were only used for submitting the results, which were then evaluated on the 6.869 course server using the ground truth labels not available to students in the course.
 
-All manuscripts must be in English.
+We had two different training setups. We used Amazon Web Services
+with a \texttt{p2.xlarge} instance that had a NVIDIA K80 GPU with 61 GB memory and 4 virtual CPUs (vCPUs).  However, since we were limited in the amount of time we could use this for, we also used our local machine which had a NVIDIA GeForce GT 740M Graphics with 2048MB of memory. For both hardware stacks, we implemented our models in
+Tensorflow with CuDNN GPU support using Python.
 
-\subsection{Dual submission}
+\subsection{Division of Work}
 
-Please refer to the author guidelines on the CVPR 2017 web page for a
-discussion of the policy on dual submissions.
+Authors shared equal workload in writing this report. However,
+the research was divided as follows:
 
-\subsection{Paper length}
-Papers, excluding the references section,
-must be no longer than eight pages in length. The references section
-will not be included in the page count, and there is no limit on the
-length of the references section. For example, a paper of eight pages
-with two pages of references would have a total length of 10 pages.
-{\bf There will be no extra page charges for
-  CVPR 2017.}
+\subsubsection{Brian}
+Brian focused on trying different ideas and seeing which seemed fruitful.  Brian started with the modifications to AlexNet as described in Section \ref{mod_alex}.  Then, he tried various approaches to tackle the problem of over-fitting, which are described in Sections \ref{ensemble} and \ref{mod_input}.
 
-Overlength papers will simply not be reviewed.  This includes papers
-where the margins and formatting are deemed to have been significantly
-altered from those laid down by this style guide.  Note that this
-\LaTeX\ guide already sets figure captions and references in a smaller font.
-The reason such papers will not be reviewed is that there is no provision for
-supervised revisions of manuscripts.  The reviewing process cannot determine
-the suitability of the paper for presentation in eight pages if it is
-reviewed in eleven.  
+\subsection{Drew}
+Drew focused on taking a deeper dive into VGG and working with AWS as described in Section \ref{vgg}.  This ended up being the most successful path and gave us our best results.
 
-%-------------------------------------------------------------------------
-\subsection{The ruler}
-The \LaTeX\ style defines a printed ruler which should be present in the
-version submitted for review.  The ruler is provided in order that
-reviewers may comment on particular lines in the paper without
-circumlocution.  If you are preparing a document using a non-\LaTeX\
-document preparation system, please arrange for an equivalent ruler to
-appear on the final output pages.  The presence or absence of the ruler
-should not change the appearance of any other content on the page.  The
-camera ready copy should not contain a ruler. (\LaTeX\ users may uncomment
-the \verb'\cvprfinalcopy' command in the document preamble.)  Reviewers:
-note that the ruler measurements do not align well with lines in the paper
---- this turns out to be very difficult to do well when the paper contains
-many figures and equations, and, when done, looks ugly.  Just use fractional
-references (e.g.\ this line is $095.5$), although in most cases one would
-expect that the approximate location will be adequate.
+\section{Approaches}
+%TODO review and edit
+\subsection{Modification of AlexNet}
+\label{mod_alex}
+Our first approach was to try and modify AlexNet to see if we could gain any additional performance beyond its baseline model, renowned for its success in the 2012 ImageNet Challenge \cite{AlexNet}. We tried varying the sizes of the various layers, changing the Dropout rate and changing the sizes of the filters.  However, none of these resulted in any performance benefit.  Interestingly enough, they all had almost identical performance on the validation set, signifying that AlexNet is a fairly robust model to small changes in its structure.  The only change that we did that had any effect was adding a fully connected layer at the end.  This made the model a fair amount bigger and slower to train, but was able to yield a $2.4\%$ relative improvement in the Top-1 accuracy and $5.2\%$ relative improvement in the Top-5 accuracy on the evaluation set.  One thing that we noticed was that our model would start over-fitting fairly dramatically and changing the Dropout was not able to fix it, suggesting a need for better regularization techniques to be tried in the future.  These are labeled as ``AlexNet standard'' and ``AlexNet (extra FC)'' in Tables \ref{tab:top1_results} and \ref{tab:top5_results}.
 
-\subsection{Mathematics}
+\subsection{Ensemble methods}
+\label{ensemble}
+In an attempt to limit the amount of over-fitting, we tried to see if we could combine models that had been trained on different subsets of the images and lead to better generalization across different classes of scenes.  To do, we made several models, all with the same architecture, that would each get a different training set.  We would then train until the validation accuracy stopped improving.  When we had many such models, we would have each of them make predictions on the test/validation set and get the probability for each category that each model gave it.  We then sum these probabilities to get an overall probability for each scene category and can make our guesses.  The idea of this approach is that no individual model is required to generalize to all of the images (rather, each model is a form of ``expert''), but together they have seen all of the images.  We tested this by using AlexNet and training for 1,000 iterations on a random subset of 10,000 images  This approach, while not particularly successful at increasing the Top-5 accuracy, did show us something interesting: having multiple guesses at each image almost always increased the Top-1 accuracy over a single guess. This is discussed in more depth in
+Section \ref{exp_results}.
 
-Please number all of your sections and displayed equations.  It is
-important for readers to be able to refer to any particular equation.  Just
-because you didn't refer to it in the text doesn't mean some future reader
-might not need to refer to it.  It is cumbersome to have to use
-circumlocutions like ``the equation second from the top of page 3 column
-1''.  (Note that the ruler will not be present in the final copy, so is not
-an alternative to equation numbers).  All authors will benefit from reading
-Mermin's description of how to write mathematics:
-\url{http://www.pamitc.org/documents/mermin.pdf}.
+\subsection{Modifying the input images}
+\label{mod_input}
+Following up on the above idea for which getting multiple guesses for each image and combining then, we tried to see if we could deal with over-fitting by training not just only on the raw input images, but also on transformations of them.  When loading an image instead of just having the one image, we would instead create and return 9 versions of this image.  These versions were combinations of three different sizes and three different positions of the raw image.  During the training phase, we considered all of these images separately, but during the validation and testing phase, we would combine the predictions for each of the images in the same way as we did above.  We did find that in general this would improve our training accuracy, but at a cost of making training substantially slower.  Since each image was now 9 separate images, and we found that it did best if these images were in the same batch, our batch size had to drop by a factor of 9, since we could not increase our memory by a factor of 9.  This meant that this model was too slow to be practically trained to any reasonable degree of convergence.
 
+Another method we tried was taking one random image from this set of 9 in the training phase, then only using all 9 in the testing and validation validation phases. This made training more feasible, but was not able to generate improved results.  This is labeled as ``AlexNet Multi'' in Tables \ref{tab:top1_results} and \ref{tab:top5_results}.  We were not able to complete this with VGG due to the issues with the size of the model and the required batch size.
 
-\subsection{Blind review}
+\subsection{VGG}
+\label{vgg}
 
-Many authors misunderstand the concept of anonymizing for blind
-review.  Blind review does not mean that one must remove
-citations to one's own work---in fact it is often impossible to
-review a paper unless the previous citations are known and
-available.
+The Visual Geometry Group (VGG) at University of Oxford developed
+several variations of the original 2012 AlexNet architecture
+(see Section \ref{mod_alex}) for the 2014 ImageNet challenge
+\cite{VGG}. Two main changes to the AlexNet architecture
+were made for all such variations:
+\begin{itemize}
+\item Local Response Normalization (LRN) layers were removed, as
+they observed increased memory consumption and computation time with
+no increase in performance on the ImageNet dataset they were using.
 
-Blind review means that you do not use the words ``my'' or ``our''
-when citing previous work.  That is all.  (But see below for
-techreports.)
+\item Receptive fields were reduced in size from $11 \times 11$
+with stride 4 to $3 \times 3$ with stride 1, with network depth
+being increased to compensate.
+\end{itemize}
 
-Saying ``this builds on the work of Lucy Smith [1]'' does not say
-that you are Lucy Smith; it says that you are building on her
-work.  If you are Smith and Jones, do not say ``as we show in
-[7]'', say ``as Smith and Jones show in [7]'' and at the end of the
-paper, include reference 7 as you would any other cited work.
+In addition to these changes, there were several variations
+on the network architectures themselves (see
+Table \ref{tab:vgg_archs}). For brevity, we only
+include the architectures upon which we conducted experiments
+as well (VGG A, VGG B, VGG D), in addition to our own modifications
+to these architectures (described later in
+Section \ref{vgg_arch_mods}. As in the paper, the convolutional
+layer parameters are denoted as
+``conv(receptive field size)-(number of channels)'' and neither
+Dropout layers nor the ReLU activation function are shown.
 
-An example of a bad paper just asking to be rejected:
-\begin{quote}
-\begin{center}
-    An analysis of the frobnicatable foo filter.
-\end{center}
-
-   In this paper we present a performance analysis of our
-   previous paper [1], and show it to be inferior to all
-   previously known methods.  Why the previous paper was
-   accepted without this analysis is beyond me.
-
-   [1] Removed for blind review
-\end{quote}
-
-
-An example of an acceptable paper:
-
-\begin{quote}
-\begin{center}
-     An analysis of the frobnicatable foo filter.
-\end{center}
-
-   In this paper we present a performance analysis of the
-   paper of Smith \etal [1], and show it to be inferior to
-   all previously known methods.  Why the previous paper
-   was accepted without this analysis is beyond me.
-
-   [1] Smith, L and Jones, C. ``The frobnicatable foo
-   filter, a fundamental contribution to human knowledge''.
-   Nature 381(12), 1-213.
-\end{quote}
-
-If you are making a submission to another conference at the same time,
-which covers similar or overlapping material, you may need to refer to that
-submission in order to explain the differences, just as you would if you
-had previously published related work.  In such cases, include the
-anonymized parallel submission~\cite{Authors14} as additional material and
-cite it as
-\begin{quote}
-[1] Authors. ``The frobnicatable foo filter'', F\&G 2014 Submission ID 324,
-Supplied as additional material {\tt fg324.pdf}.
-\end{quote}
-
-Finally, you may feel you need to tell the reader that more details can be
-found elsewhere, and refer them to a technical report.  For conference
-submissions, the paper must stand on its own, and not {\em require} the
-reviewer to go to a techreport for further details.  Thus, you may say in
-the body of the paper ``further details may be found
-in~\cite{Authors14b}''.  Then submit the techreport as additional material.
-Again, you may not assume the reviewers will read this material. 
-
-Sometimes your paper is about a problem which you tested using a tool which
-is widely known to be restricted to a single institution.  For example,
-let's say it's 1969, you have solved a key problem on the Apollo lander,
-and you believe that the CVPR70 audience would like to hear about your
-solution.  The work is a development of your celebrated 1968 paper entitled
-``Zero-g frobnication: How being the only people in the world with access to
-the Apollo lander source code makes us a wow at parties'', by Zeus \etal.
-
-You can handle this paper like any other.  Don't write ``We show how to
-improve our previous work [Anonymous, 1968].  This time we tested the
-algorithm on a lunar lander [name of lander removed for blind review]''.
-That would be silly, and would immediately identify the authors. Instead
-write the following:
-\begin{quotation}
-\noindent
-   We describe a system for zero-g frobnication.  This
-   system is new because it handles the following cases:
-   A, B.  Previous systems [Zeus et al. 1968] didn't
-   handle case B properly.  Ours handles it by including
-   a foo term in the bar integral.
-
-   ...
-
-   The proposed system was integrated with the Apollo
-   lunar lander, and went all the way to the moon, don't
-   you know.  It displayed the following behaviours
-   which show how well we solved cases A and B: ...
-\end{quotation}
-As you can see, the above text follows standard scientific convention,
-reads better than the first version, and does not explicitly name you as
-the authors.  A reviewer might think it likely that the new paper was
-written by Zeus \etal, but cannot make any decision based on that guess.
-He or she would have to be sure that no other authors could have been
-contracted to solve problem B.
-
-FAQ: Are acknowledgements OK?  No.  Leave them for the final copy.
-
-
-\begin{figure}[t]
-\begin{center}
-\fbox{\rule{0pt}{2in} \rule{0.9\linewidth}{0pt}}
-   %\includegraphics[width=0.8\linewidth]{egfigure.eps}
-\end{center}
-   \caption{Example of caption.  It is set in Roman so that mathematics
-   (always set in Roman: $B \sin A = A \sin B$) may be included without an
-   ugly clash.}
-\label{fig:long}
-\label{fig:onecol}
-\end{figure}
-
-\subsection{Miscellaneous}
-
-\noindent
-Compare the following:\\
-\begin{tabular}{ll}
- \verb'$conf_a$' &  $conf_a$ \\
- \verb'$\mathit{conf}_a$' & $\mathit{conf}_a$
-\end{tabular}\\
-See The \TeX book, p165.
-
-The space after \eg, meaning ``for example'', should not be a
-sentence-ending space. So \eg is correct, {\em e.g.} is not.  The provided
-\verb'\eg' macro takes care of this.
-
-When citing a multi-author paper, you may save space by using ``et alia'',
-shortened to ``\etal'' (not ``{\em et.\ al.}'' as ``{\em et}'' is a complete word.)
-However, use it only when there are three or more authors.  Thus, the
-following is correct: ``
-   Frobnication has been trendy lately.
-   It was introduced by Alpher~\cite{Alpher02}, and subsequently developed by
-   Alpher and Fotheringham-Smythe~\cite{Alpher03}, and Alpher \etal~\cite{Alpher04}.''
-
-This is incorrect: ``... subsequently developed by Alpher \etal~\cite{Alpher03} ...''
-because reference~\cite{Alpher03} has just two authors.  If you use the
-\verb'\etal' macro provided, then you need not worry about double periods
-when used at the end of a sentence as in Alpher \etal.
-
-For this citation style, keep multiple citations in numerical (not
-chronological) order, so prefer \cite{Alpher03,Alpher02,Authors14} to
-\cite{Alpher02,Alpher03,Authors14}.
-
-
-\begin{figure*}
-\begin{center}
-\fbox{\rule{0pt}{2in} \rule{.9\linewidth}{0pt}}
-\end{center}
-   \caption{Example of a short caption, which should be centered.}
-\label{fig:short}
-\end{figure*}
-
-%------------------------------------------------------------------------
-\section{Formatting your paper}
-
-All text must be in a two-column format. The total allowable width of the
-text area is $6\frac78$ inches (17.5 cm) wide by $8\frac78$ inches (22.54
-cm) high. Columns are to be $3\frac14$ inches (8.25 cm) wide, with a
-$\frac{5}{16}$ inch (0.8 cm) space between them. The main title (on the
-first page) should begin 1.0 inch (2.54 cm) from the top edge of the
-page. The second and following pages should begin 1.0 inch (2.54 cm) from
-the top edge. On all pages, the bottom margin should be 1-1/8 inches (2.86
-cm) from the bottom edge of the page for $8.5 \times 11$-inch paper; for A4
-paper, approximately 1-5/8 inches (4.13 cm) from the bottom edge of the
-page.
-
-%-------------------------------------------------------------------------
-\subsection{Margins and page numbering}
-
-All printed material, including text, illustrations, and charts, must be kept
-within a print area 6-7/8 inches (17.5 cm) wide by 8-7/8 inches (22.54 cm)
-high.
-Page numbers should be in footer with page numbers, centered and .75
-inches from the bottom of the page and make it start at the correct page
-number rather than the 4321 in the example.  To do this fine the line (around
-line 23)
-\begin{verbatim}
-%\ifcvprfinal\pagestyle{empty}\fi
-\setcounter{page}{4321}
-\end{verbatim}
-where the number 4321 is your assigned starting page.
-
-Make sure the first page is numbered by commenting out the first page being
-empty on line 46
-\begin{verbatim}
-%\thispagestyle{empty}
-\end{verbatim}
-
-
-%-------------------------------------------------------------------------
-\subsection{Type-style and fonts}
-
-Wherever Times is specified, Times Roman may also be used. If neither is
-available on your word processor, please use the font closest in
-appearance to Times to which you have access.
-
-MAIN TITLE. Center the title 1-3/8 inches (3.49 cm) from the top edge of
-the first page. The title should be in Times 14-point, boldface type.
-Capitalize the first letter of nouns, pronouns, verbs, adjectives, and
-adverbs; do not capitalize articles, coordinate conjunctions, or
-prepositions (unless the title begins with such a word). Leave two blank
-lines after the title.
-
-AUTHOR NAME(s) and AFFILIATION(s) are to be centered beneath the title
-and printed in Times 12-point, non-boldface type. This information is to
-be followed by two blank lines.
-
-The ABSTRACT and MAIN TEXT are to be in a two-column format.
-
-MAIN TEXT. Type main text in 10-point Times, single-spaced. Do NOT use
-double-spacing. All paragraphs should be indented 1 pica (approx. 1/6
-inch or 0.422 cm). Make sure your text is fully justified---that is,
-flush left and flush right. Please do not place any additional blank
-lines between paragraphs.
-
-Figure and table captions should be 9-point Roman type as in
-Figures~\ref{fig:onecol} and~\ref{fig:short}.  Short captions should be centred.
-
-\noindent Callouts should be 9-point Helvetica, non-boldface type.
-Initially capitalize only the first word of section titles and first-,
-second-, and third-order headings.
-
-FIRST-ORDER HEADINGS. (For example, {\large \bf 1. Introduction})
-should be Times 12-point boldface, initially capitalized, flush left,
-with one blank line before, and one blank line after.
-
-SECOND-ORDER HEADINGS. (For example, { \bf 1.1. Database elements})
-should be Times 11-point boldface, initially capitalized, flush left,
-with one blank line before, and one after. If you require a third-order
-heading (we discourage it), use 10-point Times, boldface, initially
-capitalized, flush left, preceded by one blank line, followed by a period
-and your text on the same line.
-
-%-------------------------------------------------------------------------
-\subsection{Footnotes}
-
-Please use footnotes\footnote {This is what a footnote looks like.  It
-often distracts the reader from the main flow of the argument.} sparingly.
-Indeed, try to avoid footnotes altogether and include necessary peripheral
-observations in
-the text (within parentheses, if you prefer, as in this sentence).  If you
-wish to use a footnote, place it at the bottom of the column on the page on
-which it is referenced. Use Times 8-point type, single-spaced.
-
-
-%-------------------------------------------------------------------------
-\subsection{References}
-
-List and number all bibliographical references in 9-point Times,
-single-spaced, at the end of your paper. When referenced in the text,
-enclose the citation number in square brackets, for
-example~\cite{Authors14}.  Where appropriate, include the name(s) of
-editors of referenced books.
-
-\begin{table}
-\begin{center}
-\begin{tabular}{|l|c|}
-\hline
-Method & Frobnability \\
-\hline\hline
-Theirs & Frumpy \\
-Yours & Frobbly \\
-Ours & Makes one's heart Frob\\
-\hline
-\end{tabular}
-\end{center}
-\caption{Results.   Ours is better.}
+\begin{table}[th]
+  \caption{VGG Architectures Used}
+  \label{tab:vgg_archs}
+  \centering
+  \begin{tabular}{ c | c | c }
+    \toprule
+    VGG A & VGG B & VGG D \\
+    \midrule
+    11 weight layers & 13 weight layers & 16 weight layers \\
+    \midrule
+    \multicolumn{3}{c}{Input ($100 \times 100$ RGB image)} \\
+    \midrule
+    conv3-64 & conv3-64 & conv3-64 \\
+     & conv3-64 & conv3-64 \\
+    \midrule
+    \multicolumn{3}{c}{maxpool} \\
+    \midrule
+    conv3-128 & conv3-128 & conv3-128 \\
+     & conv3-128 & conv3-128 \\
+    \midrule
+    \multicolumn{3}{c}{maxpool} \\
+    \midrule
+    conv3-256 & conv3-256 & conv3-256 \\
+    conv3-256 & conv3-256 & conv3-256 \\
+     & & conv3-256 \\
+    \midrule
+    \multicolumn{3}{c}{maxpool} \\
+    \midrule
+    conv3-512 & conv3-512 & conv3-512 \\
+    conv3-512 & conv3-512 & conv3-512 \\
+     & & conv3-512 \\
+    \midrule
+    \multicolumn{3}{c}{maxpool} \\
+    \midrule
+    conv3-512 & conv3-512 & conv3-512 \\
+    conv3-512 & conv3-512 & conv3-512 \\
+     & & conv3-512 \\
+    \midrule
+    \multicolumn{3}{c}{maxpool} \\
+    \midrule
+    \multicolumn{3}{c}{Fully connected w/ 4096 output units} \\
+    \midrule
+    \multicolumn{3}{c}{Fully connected w/ 4096 output units} \\ 
+    \midrule
+    \multicolumn{3}{c}{Fully connected w/ 100 output classes} \\
+    \midrule
+    \multicolumn{3}{c}{Softmax} \\
+    \midrule
+    \bottomrule
+  \end{tabular}
 \end{table}
 
-%-------------------------------------------------------------------------
-\subsection{Illustrations, graphs, and photographs}
+The baseline models from VGG were trained in the same way as
+described in the paper. Mini-batch gradient descent with momentum
+0.9, batch size 100, and initial learning rate $\gamma = 0.01$
+was used to minimize our loss function, which was a sum of
+the cross-entropy with an $\ell_2$ regularization penalty on
+the weights of the network with $\ell_2$ weight
+$\beta = 5 \times 10^{-4}$. The learning rate was then decayed
+by a factor of 10 at the end of each epoch for which the
+validation loss did not improve, and early stopping was employed
+once the learning rate was decayed three times.
 
-All graphics should be centered.  Please ensure that any point you wish to
-make is resolvable in a printed copy of the paper.  Resize fonts in figures
-to match the font in the body text, and choose line widths which render
-effectively in print.  Many readers (and reviewers), even of an electronic
-copy, will choose to print your paper in order to read it.  You cannot
-insist that they do otherwise, and therefore must not assume that they can
-zoom in to see tiny details on a graphic.
+\subsubsection{Training modifications}
+\label{vgg_train_mods}
 
-When placing figures in \LaTeX, it's almost always best to use
-\verb+\includegraphics+, and to specify the  figure width as a multiple of
-the line width as in the example below
-{\small\begin{verbatim}
-   \usepackage[dvips]{graphicx} ...
-   \includegraphics[width=0.8\linewidth]
-                   {myfile.eps}
-\end{verbatim}
-}
+Our primary modification to this training protocol was to 
+introduce regularization for each batch, due to issues with
+over-fitting in general as well as rapidly changing batch sizes
+per model due to our memory constraints (see Section \ref{exp_setup}).
+To address this, we added batch normalization \cite{BatchNorm} (abbreviated
+as BN in Tables \ref{tab:top1_results} and \ref{tab:top5_results}).
+Batch normalization had the effect of improving our generalization
+by implicitly including normalization as part of the model
+architecture, thus having the regularizing effect of reducing
+internal covariate shift. Batch normalization led to $2.0\%$
+absolute improvement in Top-5 error and $3.2\%$ absolute
+improvement in Top-1 error on the evaluation set when applied
+to the VGG A architecture and was also successfully applied to
+VGG B and VGG D.
+
+\subsubsection{Architecture modifications}
+\label{vgg_arch_mods}
+
+Modifications were also made to the VGG architectures themselves.
+For the VGG A architecture, we experimented with adding an extra
+fully-connected layer with 4096 output units (labeled as
+``VGG A (extra FC) w/ BN'' in Table \ref{tab:top1_results} and
+\ref{tab:top5_results}) after observing improved results for
+doing so with AlexNet (see the aforementioned tables),
+but this seemed to only have the effect of increasing under-fitting
+in our network. Thus, we also experimented with removing layers.
+
+The ``VGG A (small) w/ BN'' network is a modification to VGG A where
+the last two convolutional layers (and associated maxpool) were
+removed. This seemed to perform better than adding layers and took
+less time to train, but was ultimately less effective than the
+original VGG A architecture with batch normalization applied.
+These architecture modifications were not applied to VGG B
+or VGG D, as these already were exhibiting under-fitting relative
+to VGG A models.
 
 
-%-------------------------------------------------------------------------
-\subsection{Color}
+\subsection{Model combination}
+Finally, we tried combining the AlexNet and VGG guesses in a similar
+manner to the averaging performed by the ensemble models described
+in Section \ref{ensemble}. While this performed better than the
+baseline AlexNet and VGG models in terms of Top-1 accuracy, it did
+not outperform AlexNet or VGG on Top-5 accuracy (similar to how
+ensemble models performed relative to their individual classifiers).
 
-Please refer to the author guidelines on the CVPR 2017 web page for a discussion
-of the use of color in your document.
 
 %------------------------------------------------------------------------
-\section{Final copy}
+\section{Experimental Results}
+\label{exp_results}
+%embellish
+Our data is shown in Tables \ref{tab:top1_results} and \ref{tab:top5_results}.  This includes all of our submitted results, except those that were from buggy models.  We note several interesting points.  The first is that VGG always performs better than AlexNet.  We also note that ensemble methods do much better in improving Top-1 error compared to Top-5 error.  We hypothesize that this is because of the relatively na\"{i}ve way in which the models were combined.  Our averaging choice had the effect of allowing one of the models to guess correctly for the whole ensemble if it was fairly certain about what the result was.  However, in the case where the models are less certain and instead have the correct answer in just the Top-5 guesses, it is likely to be overtaken by a different label when each of the models average together their (potentially disjoint)
+guesses for Top-5 labels.
 
-You must include your signed IEEE copyright release form when you submit
-your finished paper. We MUST have this form before your paper can be
-published in the proceedings.
+\begin{table}[th]
+  \caption{Top-1 Error on MiniPlaces dataset}
+  \label{tab:top1_results}
+  \centering
+  \begin{tabular}{ l | r | r }
+    \toprule
+    Model & Validation & Evaluation \\
+    \midrule
+    % VGG A (overfitted) & $64.0\%$ & $74.5\%$ \\
+    AlexNet Multi & $55.2\%$ & $54.4\%$ \\
+    AlexNet + VGG A & $51.9\%$ & $52.8\%$ \\
+    AlexNet (extra FC) 10,000 iterations  & $64.5\%$ & $65.3\%$ \\
+    AlexNet standard 10,000 iterations & $61.4\%$ & $62.9\%$ \\
+    AlexNet (extra FC) 25,000 iterations & $61.2\%$ & $61.4\%$ \\
+    VGG A w/o LR decay & $63.0\%$ & $55.7\%$ \\
+    VGG D w/ BN & $52.3\%$ & $52.9\%$ \\
+    VGG A & $55.0\%$ & $52.9\%$ \\
+    VGG A (extra FC) w/ BN & $50.6\%$ & $51.1\%$ \\
+    VGG A (small) w/ BN & $49.7\%$ & $50.4\%$ \\
+    VGG B w/ BN & $49.6\%$ & $50.5\%$ \\
+    VGG A w/ BN & $\mathbf{48.8\%}$ & $\mathbf{49.7\%}$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[th]
+  \caption{Top-5 Error on MiniPlaces dataset}
+  \label{tab:top5_results}
+  \centering
+  \begin{tabular}{ l | r | r }
+    \toprule
+    Model & Validation & Evaluation \\
+    \midrule
+    % VGG A (overfitted) & $37.0\%$ & $45.9\%$ \\
+    AlexNet Multi & $24.6\%$ & $40.9\%$ \\
+    AlexNet + VGG A & $21.7\%$ & $39.3\%$ \\
+    AlexNet (extra FC) 10,000 iterations & $34.2\%$ & $34.3\%$ \\
+    AlexNet standard 10,000 iterations & $31.1\%$ & $32.5\%$ \\
+    AlexNet (extra FC) 25,000 iterations & $30.5\%$ & $30.9\%$ \\
+    VGG A w/o LR decay & $28.0\%$ & $25.8\%$ \\
+    VGG D w/ BN & $22.3\%$ & $23.4\%$ \\
+    VGG A & $17.0\%$ & $23.3\%$ \\
+    VGG A (extra FC) w/ BN & $20.6\%$ & $22.0\%$ \\
+    VGG A (small) w/ BN & $21.2\%$ & $21.6\%$ \\
+    VGG B w/ BN & $\mathbf{20.2\%}$ & $21.3\%$ \\
+    VGG A w/ BN & $20.4\%$ & $\mathbf{21.3\%}$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+
+\section{Conclusion}
+We found that both networks that we tested are reasonably robust to small changes in the network structure, but did find several techniques that could be used to improve the performance on this specific task at different costs.  Adding a fully connected layer to the end of a network normally improved the performance, but required more iterations to learn.  We also found that combining models could improve the accuracy on Top-1, but not Top-5 accuracy.  We also found that taking different sections of the image dataset and making individual guesses on each one could also improve performance, but required a multiplicative increase in memory. 
+We conclude that both AlexNet and VGG are robust, effective architectures
+for various computer vision tasks that are capable of being tuned to
+other tasks and other datasets.
 
 
 {\small
