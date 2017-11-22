@@ -2,7 +2,7 @@ import os
 import numpy as np
 import scipy.misc
 import h5py
-import matplotlib.pyplot as plt
+import random
 np.random.seed(123)
 
 # loading data from .h5
@@ -32,7 +32,7 @@ class DataLoaderH5(object):
         self._idx = 0
         print("DataLoader ready.")
         
-    def next_batch(self, batch_size):
+    def next_batch_all(self, batch_size):
         labels_batch = np.zeros(batch_size*9)
         images_batch = np.zeros((batch_size*9, self.fine_size, self.fine_size, 3)) 
         
@@ -79,6 +79,62 @@ class DataLoaderH5(object):
                 images_batch[6+9*i+loc_i, ...] = image[offset_h:offset_h+self.fine_size, offset_w:offset_w+self.fine_size, :]
                 
                 labels_batch[6+9*i+loc_i, ...] = self.lab_set[self._idx]
+
+            self._idx += 1
+            if self._idx == self.num:
+                self._idx = 0
+                if self.randomize:
+                    self.shuffle()
+        
+        return images_batch, labels_batch
+
+    def next_batch_sample(self, batch_size):
+        labels_batch = np.zeros(batch_size)
+        images_batch = np.zeros((batch_size, self.fine_size, self.fine_size, 3)) 
+        
+        for i in range(batch_size):
+            image = self.im_set[self._idx]
+            image = image.astype(np.float32)/255. - self.data_mean
+
+
+            resize_factor = np.random.random_integers(self.load_size, self.load_size*2)
+            images_labels = []
+            image_1 = scipy.misc.imresize(image, (resize_factor, resize_factor))
+            image_1 = image_1.astype(np.float32)/255. - self.data_mean
+            for loc_i in range(3):
+                flip = np.random.random_integers(0, 1)
+                if flip>0:
+                    image_1 = image_1[:,::-1,:]
+                offset_h = np.random.random_integers(0, image_1.shape[0]-self.fine_size)
+                offset_w = np.random.random_integers(0, image_1.shape[1]-self.fine_size)
+                
+                images_labels.append((image_1[offset_h:offset_h+self.fine_size, offset_w:offset_w+self.fine_size, :],self.lab_set[self._idx]))
+
+            resize_factor = np.random.random_integers(self.fine_size, self.load_size)
+            image_2 = scipy.misc.imresize(image, (resize_factor, resize_factor))
+            image_2 = image_2.astype(np.float32)/255. - self.data_mean
+            for loc_i in range(3):
+                flip = np.random.random_integers(0, 1)
+                if flip>0:
+                    image_2 = image_2[:,::-1,:]
+                offset_h = np.random.random_integers(0, image_2.shape[0]-self.fine_size)
+                offset_w = np.random.random_integers(0, image_2.shape[1]-self.fine_size)
+                
+                images_labels.append((image_2[offset_h:offset_h+self.fine_size, offset_w:offset_w+self.fine_size, :],self.lab_set[self._idx]))
+                
+            for loc_i in range(3):
+                flip = np.random.random_integers(0, 1)
+                if flip>0:
+                    image = image[:,::-1,:]
+                offset_h = np.random.random_integers(0, image.shape[0]-self.fine_size)
+                offset_w = np.random.random_integers(0, image.shape[1]-self.fine_size)
+                
+                images_labels.append((image[offset_h:offset_h+self.fine_size, offset_w:offset_w+self.fine_size, :],self.lab_set[self._idx]))
+
+            choice = random.choice(images_labels)
+            images_batch[i, ...] = choice[0]
+            labels_batch[i, ...] = choice[1]
+
 
             self._idx += 1
             if self._idx == self.num:
